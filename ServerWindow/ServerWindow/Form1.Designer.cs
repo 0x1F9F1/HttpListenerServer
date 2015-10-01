@@ -1,6 +1,6 @@
 ﻿namespace ServerWindow
 {
-    partial class Form1
+    partial class MainWindow
     {
         /// <summary>
         /// Required designer variable.
@@ -28,12 +28,34 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.LogBox = new System.Windows.Forms.TextBox();
+            this.SuspendLayout();
+            // 
+            // LogBox
+            // 
+            this.LogBox.Location = new System.Drawing.Point(12, 12);
+            this.LogBox.Multiline = true;
+            this.LogBox.Name = "LogBox";
+            this.LogBox.Size = new System.Drawing.Size(465, 298);
+            this.LogBox.TabIndex = 0;
+            // 
+            // MainWindow
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Text = "Form1";
+            this.ClientSize = new System.Drawing.Size(489, 322);
+            this.Controls.Add(this.LogBox);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.Name = "MainWindow";
+            this.Text = "Brick\'s C# Server";
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
         }
 
         #endregion
+
+        private System.Windows.Forms.TextBox LogBox;
     }
 }
 

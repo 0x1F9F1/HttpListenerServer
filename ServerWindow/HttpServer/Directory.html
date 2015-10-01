@@ -1,0 +1,76 @@
+<!DOCTYPE HTML>
+    <title>%0%</title>
+<html>
+
+<head>
+    <style>
+        html { font-family: Consolas; }
+
+        h1 {
+            text-align: center;
+            text-decoration: underline;
+        }
+
+        table {
+
+            border-collapse: collapse;
+            border-spacing: 5px;
+            padding: 5px;
+            width: 100%;
+        }
+
+        table, th, td { border: 1px solid black; }
+
+        table th {
+            background-color: black;
+            color: white;
+            font-size: 1.1em;
+        }
+
+        table tr { background-color: #DDDDDD; }
+
+        .name {
+            max-width: 0.85em;
+            min-width: 0.85em;
+            text-align: left;
+            width: 0.85em;
+        }
+
+        .date {
+            max-width: 0.1em;
+            min-width: 0.1em;
+            text-align: center;
+            width: 0.1em;
+        }
+
+        .size {
+            max-width: 0.05em;
+            min-width: 0.05em;
+            text-align: right;
+            width: 0.05em;
+        }
+
+        .button {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        a { text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<h1>%1%</h1>
+<p class="button">
+    <a href="%2%">Up</a> <a href="%3%">Home</a>
+</p>
+<table>
+    <tr>
+        <th class="name">Name</th>
+        <th class="date">Last Modified</th>
+        <th class="size">Size</th>
+    </tr>
+    %4%
+</table>
+</body>
+</html>

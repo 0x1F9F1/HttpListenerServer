@@ -26,6 +26,11 @@ namespace HttpListenerServer
             _httpListener.Prefixes.Add(@"http://*:80/");
         }
 
+        ~HttpServer()
+        {
+            Dispose();
+        }
+
         private void ListenerThread()
         {
             while (_httpListener.IsListening)
@@ -40,7 +45,7 @@ namespace HttpListenerServer
                 }
                 catch (Exception e)
                 {
-                    Log(e.Message);
+                    Log($"[Error] {e.Message}");
                 }   
             }
         }
@@ -48,6 +53,7 @@ namespace HttpListenerServer
         private void HandleRequest(object state)
         {
             HttpListenerContext context = (HttpListenerContext)state;
+            Log($"[Request] {context.Request.Url.LocalPath}");
             if (_requestHandler.HandleIcon(context)) { }
             else if (_requestHandler.HandleFile(context)) { }
             else if(_requestHandler.HandleDirectory(context)) { }
@@ -57,8 +63,8 @@ namespace HttpListenerServer
 
         private static void Log(object data)
         {
-            Debug.WriteLine($"{DateTime.Now:R} | {data}");
-            Console.WriteLine($"{DateTime.Now:R} | {data}");
+            Debug.WriteLine($"{DateTime.Now:R} | [Main] {data}");
+            Console.WriteLine($"{DateTime.Now:R} | [Main] {data}");
         }
 
 
@@ -76,7 +82,7 @@ namespace HttpListenerServer
             }
             catch (Exception e)
             {
-                Log(e);
+                Log($"[Error] {e.Message}");
             }
         }
 
@@ -90,7 +96,7 @@ namespace HttpListenerServer
             }
             catch (Exception e)
             {
-                Log(e);
+                Log($"[Error] {e.Message}");
             }
         }
 
@@ -102,7 +108,7 @@ namespace HttpListenerServer
             }
             catch (Exception e)
             {
-                Log(e);
+                Log($"[Error] {e.Message}");
             }
         }
 

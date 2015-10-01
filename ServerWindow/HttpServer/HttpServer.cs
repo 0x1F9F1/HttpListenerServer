@@ -4,28 +4,23 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
 using System.Threading;
 
-namespace HttpServer
+namespace HttpListenerServer
 {
     public class HttpServer : IDisposable
     {
-        public readonly string RootFolder;
         private readonly HttpListener _httpListener;
         private Thread _listenerThread;
-        private Handler _requestHandler;
+        private readonly Handler _requestHandler;
 
         public HttpServer(string rootFolder = @"Files\", bool relative = true)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
 
             if (!rootFolder.EndsWith(@"\")) { rootFolder += @"\";}
-            RootFolder = relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder;
             _listenerThread = new Thread(ListenerThread);
-            _requestHandler = new Handler(RootFolder);
+            _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder);
 
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(@"http://*:80/");
@@ -63,6 +58,7 @@ namespace HttpServer
         private static void Log(object data)
         {
             Debug.WriteLine($"{DateTime.Now:R} | {data}");
+            Console.WriteLine($"{DateTime.Now:R} | {data}");
         }
 
 
@@ -70,6 +66,12 @@ namespace HttpServer
         {
             try
             {
+                Log("Starting Server");
+                if (!_httpListener.IsListening)
+                    _httpListener.Start();
+                if (!_listenerThread.IsAlive)
+                    _listenerThread = new Thread(ListenerThread);
+                    _listenerThread.Start();
 
             }
             catch (Exception e)
@@ -82,7 +84,9 @@ namespace HttpServer
         {
             try
             {
-
+                Log("Stopping Server");
+                if (_httpListener.IsListening)
+                    _httpListener.Stop();
             }
             catch (Exception e)
             {

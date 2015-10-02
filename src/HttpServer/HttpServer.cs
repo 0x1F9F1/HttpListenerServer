@@ -4,31 +4,45 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Win32.SafeHandles;
 
 namespace HttpListenerServer
 {
-    public class HttpServer : IDisposable
+    public sealed class HttpServer : IDisposable
     {
+        private readonly SafeHandle _handle = new SafeFileHandle(IntPtr.Zero, true);
         private readonly HttpListener _httpListener;
-        private Thread _listenerThread;
         private readonly Handler _requestHandler;
+        private bool _disposed;
+        private Thread _listenerThread;
 
         public HttpServer(string rootFolder = @"Files\", bool relative = true)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
 
-            if (!rootFolder.EndsWith(@"\")) { rootFolder += @"\";}
+            if (!rootFolder.EndsWith(@"\"))
+            {
+                rootFolder += @"\";
+            }
             _listenerThread = new Thread(ListenerThread);
-            _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder);
+            _requestHandler =
+                new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder);
 
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(@"http://*:80/");
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
         ~HttpServer()
         {
-            Dispose();
+            Dispose(false);
         }
 
         private void ListenerThread()
@@ -46,19 +60,30 @@ namespace HttpListenerServer
                 catch (Exception e)
                 {
                     Log($"[Error] {e.Message}");
-                }   
+                }
             }
         }
 
         private void HandleRequest(object state)
         {
-            HttpListenerContext context = (HttpListenerContext)state;
+            var context = (HttpListenerContext) state;
             Log($"[Request] {context.Request.Url.LocalPath}");
-            if (_requestHandler.HandleIcon(context)) { }
-            else if (_requestHandler.HandleFile(context)) { }
-            else if(_requestHandler.HandleDirectory(context)) { }
-            else if (_requestHandler.HandleOther(context)) { }
-            else { context.Response.Abort(); }
+            if (_requestHandler.HandleIcon(context))
+            {
+            }
+            else if (_requestHandler.HandleFile(context))
+            {
+            }
+            else if (_requestHandler.HandleDirectory(context))
+            {
+            }
+            else if (_requestHandler.HandleOther(context))
+            {
+            }
+            else
+            {
+                context.Response.Abort();
+            }
         }
 
         private static void Log(object data)
@@ -77,8 +102,7 @@ namespace HttpListenerServer
                     _httpListener.Start();
                 if (!_listenerThread.IsAlive)
                     _listenerThread = new Thread(ListenerThread);
-                    _listenerThread.Start();
-
+                _listenerThread.Start();
             }
             catch (Exception e)
             {
@@ -104,7 +128,8 @@ namespace HttpListenerServer
         {
             try
             {
-
+                _httpListener.Abort();
+                _listenerThread.Abort();
             }
             catch (Exception e)
             {
@@ -112,16 +137,30 @@ namespace HttpListenerServer
             }
         }
 
-        public void Dispose()
+        private void Dispose(bool disposing)
         {
-            _httpListener.Close();
+            if (_disposed)
+                return;
+
+            if (disposing)
+            {
+                _httpListener.Close();
+                _handle.Dispose();
+            }
+
+            _disposed = true;
         }
 
         private static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
         {
             var assemblyName = new AssemblyName(args.Name);
 
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) ? assemblyName.Name + ".dll" : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
+            using (
+                var stream =
+                    Assembly.GetExecutingAssembly()
+                        .GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture)
+                            ? assemblyName.Name + ".dll"
+                            : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
                 if (stream == null)
                     return null;

@@ -11,12 +11,15 @@ namespace HttpListenerServer
     partial class Handler
     {
         private const int PacketSize = 16777216;
-        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled);
 
-        private readonly byte[] _iconBytes;
-        private readonly string _folderRoot;
+        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?",
+            RegexOptions.Compiled);
+
         private readonly string _directoryTemplate;
         private readonly string _errorTemplate;
+        private readonly string _folderRoot;
+
+        private readonly byte[] _iconBytes;
 
         public Handler(string root)
         {
@@ -25,6 +28,7 @@ namespace HttpListenerServer
             _directoryTemplate = File.ReadAllText("Directory.html");
             _errorTemplate = File.ReadAllText("Error.html");
         }
+
         public bool HandleIcon(HttpListenerContext context)
         {
             try
@@ -63,7 +67,7 @@ namespace HttpListenerServer
                 var request = context.Request;
                 var fileInfo = new FileInfo(ToLocal(request.Url.LocalPath, _folderRoot));
                 if (!fileInfo.Exists) return false;
-                
+
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -92,7 +96,7 @@ namespace HttpListenerServer
                     {
                         var buffer = new byte[PacketSize];
                         var bytes = fileStream.Read(buffer, 0, PacketSize);
-                        var bytesToWrite = (int)Math.Min(finish - start - i, bytes);
+                        var bytesToWrite = (int) Math.Min(finish - start - i, bytes);
 
                         outputStream.Write(buffer, 0, bytesToWrite);
                     }
@@ -118,7 +122,6 @@ namespace HttpListenerServer
                 var directoryInfo = new DirectoryInfo(ToLocal(request.Url.LocalPath, _folderRoot));
 
 
-
                 if (!directoryInfo.Exists) return false;
 
                 var response = context.Response;
@@ -139,15 +142,17 @@ namespace HttpListenerServer
                 foreach (var directory in directoryInfo.EnumerateDirectories().OrderBy(s => s.Name))
                 {
                     sb.AppendLine(
-                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(directory.FullName, _folderRoot)}/\">/{directory.Name}/</a></td><td class=\"date\">{directory.LastWriteTime:G}</td><td class=\"size\">{directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024} KB</td><tr>");
+                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(directory.FullName, _folderRoot)}/\">/{directory.Name}/</a></td><td class=\"date\">{directory.LastWriteTime:G}</td><td class=\"size\">{directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length)/1024} KB</td><tr>");
                 }
                 foreach (var file in directoryInfo.EnumerateFiles().OrderBy(s => s.Name))
                 {
                     sb.AppendLine(
-                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(file.FullName, _folderRoot)}\">/{file.Name}</a></td><td class=\"date\">{file.LastWriteTime:G}</td><td class=\"size\">{file.Length / 1024} KB</td></tr>");
+                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(file.FullName, _folderRoot)}\">/{file.Name}</a></td><td class=\"date\">{file.LastWriteTime:G}</td><td class=\"size\">{file.Length/1024} KB</td></tr>");
                 }
 
-                var bytes = Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}", $"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $"//{host}/", sb));
+                var bytes =
+                    Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}",
+                        $"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $"//{host}/", sb));
 
                 response.ContentLength64 = bytes.LongLength;
 
@@ -156,44 +161,37 @@ namespace HttpListenerServer
                 response.Close();
 
                 return true;
-
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
                 return true;
             }
-
         }
 
         public bool HandleOther(HttpListenerContext context)
         {
             try
             {
-                
                 var request = context.Request;
                 var response = context.Response;
                 var outputStream = response.OutputStream;
-                if (outputStream.CanWrite)
-                {
-                    response.KeepAlive = false;
-                    response.ContentType = "text/html";
-                    response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
-                    response.Headers.Add("Content-Language", "en");
-                    response.Headers.Add("Content-Disposition", $"inline; filename=Error.html");
-                    response.Headers.Add("Date", $"{DateTime.Now:R}");
-                    response.StatusCode = 200;
+                if (!outputStream.CanWrite) return true;
+                response.KeepAlive = false;
+                response.ContentType = "text/html";
+                response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
+                response.Headers.Add("Content-Language", "en");
+                response.Headers.Add("Content-Disposition", "inline; filename=Error.html");
+                response.Headers.Add("Date", $"{DateTime.Now:R}");
+                response.StatusCode = 200;
 
-                    var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, request.Url.LocalPath));
+                var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, request.Url.LocalPath));
 
-                    response.ContentLength64 = bytes.LongLength;
+                response.ContentLength64 = bytes.LongLength;
 
-                    outputStream.Write(bytes, 0, bytes.Length);
-                    outputStream.Flush();
-                    response.Close();
-
-                    return true;
-                }
+                outputStream.Write(bytes, 0, bytes.Length);
+                outputStream.Flush();
+                response.Close();
 
                 return true;
             }

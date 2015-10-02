@@ -3,9 +3,9 @@ using HttpListenerServer;
 
 namespace ConsoleServerTest
 {
-    static class Program
+    internal static class Program
     {
-        static void Main()
+        private static void Main()
         {
             var httpServer = new HttpServer(@"D:\ServerFiles\", false);
             httpServer.Start();

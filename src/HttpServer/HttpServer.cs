@@ -67,22 +67,25 @@ namespace HttpListenerServer
         private void HandleRequest(object state)
         {
             var context = (HttpListenerContext) state;
+            var localPath = context.Request.Url.LocalPath;
             Log($"[Request] {context.Request.Url.LocalPath}");
-            if (_requestHandler.HandleIcon(context))
+            var requestType = _requestHandler.GetRequestType(localPath);
+            switch (requestType)
             {
-            }
-            else if (_requestHandler.HandleFile(context))
-            {
-            }
-            else if (_requestHandler.HandleDirectory(context))
-            {
-            }
-            else if (_requestHandler.HandleOther(context))
-            {
-            }
-            else
-            {
-                context.Response.Abort();
+                case Handler.RequestType.Icon:
+                    _requestHandler.HandleIcon(context);
+                    break;
+                case Handler.RequestType.File:
+                    _requestHandler.HandleFile(context);
+                    break;
+                case Handler.RequestType.Folder:
+                    _requestHandler.HandleDirectory(context);
+                    break;
+                case Handler.RequestType.Other:
+                    _requestHandler.HandleOther(context);
+                    break;
+                default:
+                    throw new Exception("Invalid request type.");
             }
         }
 
@@ -155,12 +158,7 @@ namespace HttpListenerServer
         {
             var assemblyName = new AssemblyName(args.Name);
 
-            using (
-                var stream =
-                    Assembly.GetExecutingAssembly()
-                        .GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture)
-                            ? assemblyName.Name + ".dll"
-                            : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) ? assemblyName.Name + ".dll" : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
                 if (stream == null)
                     return null;

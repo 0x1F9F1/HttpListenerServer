@@ -10,6 +10,14 @@ namespace HttpListenerServer
 {
     partial class Handler
     {
+        public enum RequestType
+        {
+            Icon,
+            File,
+            Folder,
+            Other
+        }
+
         private const int PacketSize = 16777216;
 
         private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?",
@@ -29,13 +37,21 @@ namespace HttpListenerServer
             _errorTemplate = File.ReadAllText("Error.html");
         }
 
-        public bool HandleIcon(HttpListenerContext context)
+        public RequestType GetRequestType(string urlPath)
+        {
+            var path = ToLocal(urlPath, _folderRoot);
+            Log(path);
+            if ((Path.GetFileName(path) ?? string.Empty) == "favicon.ico") return RequestType.Icon;
+            if (File.Exists(path)) return RequestType.File;
+            if (Directory.Exists(path)) return RequestType.Folder;
+            return RequestType.Other;
+        }
+
+        public void HandleIcon(HttpListenerContext context)
         {
             try
             {
-                var request = context.Request;
-
-                if (!Path.GetFileName(request.Url.LocalPath).Equals("favicon.ico")) return false;
+                if (!File.Exists("favicon.ico")) throw new FileNotFoundException("favicon.ico not found");
 
                 var response = context.Response;
                 var outputStream = response.OutputStream;
@@ -50,23 +66,21 @@ namespace HttpListenerServer
                 outputStream.Write(_iconBytes, 0, _iconBytes.Length);
                 outputStream.Flush();
                 response.Close();
-
-                return true;
             }
             catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
-                return true;
+                context.Response.Abort();
             }
         }
 
-        public bool HandleFile(HttpListenerContext context)
+        public void HandleFile(HttpListenerContext context)
         {
             try
             {
                 var request = context.Request;
                 var fileInfo = new FileInfo(ToLocal(request.Url.LocalPath, _folderRoot));
-                if (!fileInfo.Exists) return false;
+                if (!fileInfo.Exists) throw new FileNotFoundException($"{fileInfo.FullName} not found.");
 
                 var response = context.Response;
                 var outputStream = response.OutputStream;
@@ -104,25 +118,22 @@ namespace HttpListenerServer
 
                 outputStream.Flush();
                 response.Close();
-
-                return true;
             }
             catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
-                return true;
+                context.Response.Abort();
             }
         }
 
-        public bool HandleDirectory(HttpListenerContext context)
+        public void HandleDirectory(HttpListenerContext context)
         {
             try
             {
                 var request = context.Request;
                 var directoryInfo = new DirectoryInfo(ToLocal(request.Url.LocalPath, _folderRoot));
 
-
-                if (!directoryInfo.Exists) return false;
+                if (!directoryInfo.Exists) throw new DirectoryNotFoundException($"{directoryInfo.FullName} not found.");
 
                 var response = context.Response;
                 var outputStream = response.OutputStream;
@@ -159,24 +170,22 @@ namespace HttpListenerServer
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();
-
-                return true;
             }
             catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
-                return true;
+                context.Response.Abort();
             }
         }
 
-        public bool HandleOther(HttpListenerContext context)
+        public void HandleOther(HttpListenerContext context)
         {
             try
             {
                 var request = context.Request;
                 var response = context.Response;
                 var outputStream = response.OutputStream;
-                if (!outputStream.CanWrite) return true;
+
                 response.KeepAlive = false;
                 response.ContentType = "text/html";
                 response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
@@ -192,13 +201,11 @@ namespace HttpListenerServer
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();
-
-                return true;
             }
             catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
-                return true;
+                context.Response.Abort();
             }
         }
     }

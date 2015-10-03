@@ -158,7 +158,12 @@ namespace HttpListenerServer
         {
             var assemblyName = new AssemblyName(args.Name);
 
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) ? assemblyName.Name + ".dll" : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
+            using (
+                var stream =
+                    Assembly.GetExecutingAssembly()
+                        .GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture)
+                            ? assemblyName.Name + ".dll"
+                            : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
                 if (stream == null)
                     return null;

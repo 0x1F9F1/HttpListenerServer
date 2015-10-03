@@ -40,10 +40,11 @@ namespace HttpListenerServer
         public RequestType GetRequestType(string urlPath)
         {
             var path = ToLocal(urlPath, _folderRoot);
-            if ((Path.GetFileName(path) ?? string.Empty) == "favicon.ico") return RequestType.Icon;
-            if (File.Exists(path)) return RequestType.File;
-            if (Directory.Exists(path)) return RequestType.Folder;
-            return RequestType.Other;
+            return (Path.GetFileName(path) ?? string.Empty) == "favicon.ico"
+                ? RequestType.Icon
+                : (File.Exists(path)
+                    ? RequestType.File
+                    : (Directory.Exists(path) ? RequestType.Folder : RequestType.Other));
         }
 
         public void HandleIcon(HttpListenerContext context)

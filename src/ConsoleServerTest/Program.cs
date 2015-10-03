@@ -7,6 +7,11 @@ namespace ConsoleServerTest
     {
         private static void Main()
         {
+            Console.Title = "Brick's C# Server";
+            Console.BackgroundColor = ConsoleColor.DarkBlue;
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.Clear();
+
             var httpServer = new HttpServer(@"D:\ServerFiles\", false);
             httpServer.Start();
             Console.ReadKey();

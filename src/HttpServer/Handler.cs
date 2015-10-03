@@ -18,7 +18,7 @@ namespace HttpListenerServer
             Other
         }
 
-        private const int PacketSize = 16777216;
+        private const int PacketSize = 4096;
 
         private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?",
             RegexOptions.Compiled);
@@ -33,8 +33,11 @@ namespace HttpListenerServer
         {
             _folderRoot = root;
             _iconBytes = File.ReadAllBytes("favicon.ico");
+            Log("Loaded favicon.ico");
             _directoryTemplate = File.ReadAllText("Directory.html");
+            Log("Loaded Directory.html");
             _errorTemplate = File.ReadAllText("Error.html");
+            Log("Loaded Error.html");
         }
 
         public RequestType GetRequestType(string urlPath)

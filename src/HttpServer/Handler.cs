@@ -87,7 +87,6 @@ namespace HttpListenerServer
                 var request = context.Request;
                 var fileInfo = new FileInfo(ToLocal(request.Url.LocalPath, _folderRoot));
                 if (!fileInfo.Exists) throw new FileNotFoundException($"{fileInfo.FullName} not found.");
-
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -151,6 +150,9 @@ namespace HttpListenerServer
                 response.Headers.Add("Content-Disposition", $"inline; filename={directoryInfo.Name}.html");
                 response.Headers.Add("Date", $"{DateTime.Now:R}");
                 response.Headers.Add("Last-Modified", $"{directoryInfo.LastWriteTime:R}");
+                response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                response.Headers.Add("Pragma", "no-cache");
+                response.Headers.Add("Expires", "0");
                 response.StatusCode = 200;
 
                 var sb = new StringBuilder();

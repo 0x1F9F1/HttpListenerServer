@@ -96,7 +96,7 @@ namespace HttpListenerServer
                     var range = request.Headers["Range"] ?? string.Empty;
                     var match = RangeRegex.Match(range);
                     var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
-                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) + 1 : fileLength;
+                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
 
                     response.KeepAlive = false;
                     response.Headers.Add("Content-Type", mimeType); // Ask the system for the filetype.

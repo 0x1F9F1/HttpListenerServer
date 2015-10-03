@@ -40,7 +40,6 @@ namespace HttpListenerServer
         public RequestType GetRequestType(string urlPath)
         {
             var path = ToLocal(urlPath, _folderRoot);
-            Log(path);
             if ((Path.GetFileName(path) ?? string.Empty) == "favicon.ico") return RequestType.Icon;
             if (File.Exists(path)) return RequestType.File;
             if (Directory.Exists(path)) return RequestType.Folder;
@@ -67,6 +66,10 @@ namespace HttpListenerServer
                 outputStream.Flush();
                 response.Close();
             }
+            catch (HttpListenerException)
+            {
+                context.Response.Abort();
+            }
             catch (Exception e)
             {
                 Log($"[Error] {e.Message}");
@@ -91,6 +94,7 @@ namespace HttpListenerServer
                     var mimeType = MimeTypeMap.GetMimeType(fileInfo.Extension);
 
                     var range = request.Headers["Range"] ?? string.Empty;
+                    Log(range);
                     var match = RangeRegex.Match(range);
                     var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
                     var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
@@ -118,6 +122,10 @@ namespace HttpListenerServer
 
                 outputStream.Flush();
                 response.Close();
+            }
+            catch (HttpListenerException)
+            {
+                context.Response.Abort();
             }
             catch (Exception e)
             {
@@ -201,6 +209,10 @@ namespace HttpListenerServer
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();
+            }
+            catch (HttpListenerException)
+            {
+                context.Response.Abort();
             }
             catch (Exception e)
             {

@@ -98,7 +98,7 @@ namespace HttpListenerServer
                     var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
                     var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
 
-                    response.KeepAlive = false;
+                    response.KeepAlive = true;
                     response.Headers.Add("Content-Type", mimeType); // Ask the system for the filetype.
                     response.Headers.Add("Content-Disposition", $"inline; filename={fileInfo.Name}");
                     response.Headers.Add("Date", $"{DateTime.Now:R}");
@@ -114,11 +114,9 @@ namespace HttpListenerServer
                         var buffer = new byte[PacketSize];
                         var bytes = fileStream.Read(buffer, 0, PacketSize);
                         var bytesToWrite = (int) Math.Min(finish - start - i, bytes);
-
                         outputStream.Write(buffer, 0, bytesToWrite);
                     }
                 }
-
                 outputStream.Flush();
                 response.Close();
             }
@@ -177,6 +175,10 @@ namespace HttpListenerServer
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();
+            }
+            catch (HttpListenerException)
+            {
+                context.Response.Abort();
             }
             catch (Exception e)
             {

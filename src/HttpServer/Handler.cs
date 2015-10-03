@@ -94,15 +94,13 @@ namespace HttpListenerServer
                 using (var fileStream = fileInfo.OpenRead())
                 {
                     var fileLength = fileStream.Length;
-                    var mimeType = MimeTypeMap.GetMimeType(fileInfo.Extension);
 
-                    var range = request.Headers["Range"] ?? string.Empty;
-                    var match = RangeRegex.Match(range);
-                    var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
-                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
+                    var match = RangeRegex.Match(request.Headers["Range"] ?? string.Empty);
+                    var start = match.Groups["start"].Success ? Math.Max(0, long.Parse(match.Groups["start"].Value)) : 0L;
+                    var finish = match.Groups["end"].Success ? Math.Max(fileLength, long.Parse(match.Groups["end"].Value)) : fileLength;
 
-                    response.KeepAlive = true;
-                    response.Headers.Add("Content-Type", mimeType); // Ask the system for the filetype.
+                    response.KeepAlive = false;
+                    response.Headers.Add("Content-Type", MimeTypeMap.GetMimeType(fileInfo.Extension)); // Ask the system for the filetype.
                     response.Headers.Add("Content-Disposition", $"inline; filename={fileInfo.Name}");
                     response.Headers.Add("Date", $"{DateTime.Now:R}");
                     response.Headers.Add("Last-Modified", $"{fileInfo.LastWriteTime:R}");
@@ -112,12 +110,10 @@ namespace HttpListenerServer
                     response.StatusCode = (start == 0 && finish == fileLength) ? 200 : 206;
 
                     fileStream.Seek(start, SeekOrigin.Begin);
+                    var buffer = new byte[PacketSize];
                     for (var i = 0; i < finish - start; i += PacketSize)
                     {
-                        var buffer = new byte[PacketSize];
-                        var bytes = fileStream.Read(buffer, 0, PacketSize);
-                        var bytesToWrite = (int) Math.Min(finish - start - i, bytes);
-                        outputStream.Write(buffer, 0, bytesToWrite);
+                        outputStream.Write(buffer, 0, (int) Math.Min(finish - start - i, fileStream.Read(buffer, 0, PacketSize)));
                     }
                 }
                 outputStream.Flush();
@@ -139,14 +135,14 @@ namespace HttpListenerServer
             try
             {
                 var request = context.Request;
-                var directoryInfo = new DirectoryInfo(ToLocal(request.Url.LocalPath, _folderRoot));
+                var url = request.Url.LocalPath;
+                var directoryInfo = new DirectoryInfo(ToLocal(url, _folderRoot));
 
                 if (!directoryInfo.Exists) throw new DirectoryNotFoundException($"{directoryInfo.FullName} not found.");
 
                 var response = context.Response;
-                var outputStream = response.OutputStream;
-                var url = request.Url.LocalPath;
                 var host = request.UserHostName;
+                var outputStream = response.OutputStream;
 
                 response.KeepAlive = false;
                 response.ContentType = "text/html";
@@ -174,7 +170,6 @@ namespace HttpListenerServer
                         $"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $"//{host}/", sb));
 
                 response.ContentLength64 = bytes.LongLength;
-
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();
@@ -194,7 +189,6 @@ namespace HttpListenerServer
         {
             try
             {
-                var request = context.Request;
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -206,7 +200,7 @@ namespace HttpListenerServer
                 response.Headers.Add("Date", $"{DateTime.Now:R}");
                 response.StatusCode = 200;
 
-                var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, request.Url.LocalPath));
+                var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, context.Request.Url.LocalPath));
 
                 response.ContentLength64 = bytes.LongLength;
 

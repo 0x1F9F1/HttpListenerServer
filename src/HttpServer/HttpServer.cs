@@ -22,10 +22,7 @@ namespace HttpListenerServer
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
 
-            if (!rootFolder.EndsWith(@"\"))
-            {
-                rootFolder += @"\";
-            }
+            if (!rootFolder.EndsWith(@"\")) { rootFolder += @"\"; }
             _listenerThread = new Thread(ListenerThread);
             _requestHandler =
                 new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder);
@@ -40,10 +37,7 @@ namespace HttpListenerServer
             GC.SuppressFinalize(this);
         }
 
-        ~HttpServer()
-        {
-            Dispose(false);
-        }
+        ~HttpServer() { Dispose(false); }
 
         private void ListenerThread()
         {
@@ -57,8 +51,7 @@ namespace HttpListenerServer
                         ThreadPool.QueueUserWorkItem(HandleRequest, context);
                     }
                 }
-                catch (Exception e)
-                {
+                catch (Exception e) {
                     Log($"[Error] {e.Message}");
                 }
             }
@@ -95,20 +88,16 @@ namespace HttpListenerServer
             Console.WriteLine($"{DateTime.Now:R} | [Main] {data}");
         }
 
-
         public void Start()
         {
             try
             {
                 Log("Starting Server");
-                if (!_httpListener.IsListening)
-                    _httpListener.Start();
-                if (!_listenerThread.IsAlive)
-                    _listenerThread = new Thread(ListenerThread);
+                if (!_httpListener.IsListening) { _httpListener.Start(); }
+                if (!_listenerThread.IsAlive) { _listenerThread = new Thread(ListenerThread); }
                 _listenerThread.Start();
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log($"[Error] {e.Message}");
             }
         }
@@ -118,11 +107,9 @@ namespace HttpListenerServer
             try
             {
                 Log("Stopping Server");
-                if (_httpListener.IsListening)
-                    _httpListener.Stop();
+                if (_httpListener.IsListening) { _httpListener.Stop(); }
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log($"[Error] {e.Message}");
             }
         }
@@ -134,16 +121,14 @@ namespace HttpListenerServer
                 _httpListener.Abort();
                 _listenerThread.Abort();
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log($"[Error] {e.Message}");
             }
         }
 
         private void Dispose(bool disposing)
         {
-            if (_disposed)
-                return;
+            if (_disposed) { return; }
 
             if (disposing)
             {
@@ -165,8 +150,7 @@ namespace HttpListenerServer
                             ? assemblyName.Name + ".dll"
                             : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
-                if (stream == null)
-                    return null;
+                if (stream == null) { return null; }
 
                 var assemblyRawBytes = new byte[stream.Length];
                 stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);

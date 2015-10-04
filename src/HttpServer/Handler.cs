@@ -20,14 +20,13 @@ namespace HttpListenerServer
 
         private const int PacketSize = 4096;
 
-        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?",
-            RegexOptions.Compiled);
+        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled);
 
         private readonly string _directoryTemplate;
         private readonly string _errorTemplate;
         private readonly string _folderRoot;
 
-        private readonly byte[] _iconBytes;
+        private readonly byte[ ] _iconBytes;
 
         public Handler(string root)
         {
@@ -43,9 +42,18 @@ namespace HttpListenerServer
         public RequestType GetRequestType(string urlPath)
         {
             var path = ToLocal(urlPath, _folderRoot);
-            if ((Path.GetFileName(path) ?? string.Empty) == "favicon.ico") return RequestType.Icon;
-            if (File.Exists(path)) return RequestType.File;
-            if (Directory.Exists(path)) return RequestType.Folder;
+            if (( Path.GetFileName(path) ?? string.Empty ) == "favicon.ico")
+            {
+                return RequestType.Icon;
+            }
+            if (File.Exists(path))
+            {
+                return RequestType.File;
+            }
+            if (Directory.Exists(path))
+            {
+                return RequestType.Folder;
+            }
             return RequestType.Other;
         }
 
@@ -53,7 +61,10 @@ namespace HttpListenerServer
         {
             try
             {
-                if (!File.Exists("favicon.ico")) throw new FileNotFoundException("favicon.ico not found");
+                if (!File.Exists("favicon.ico"))
+                {
+                    throw new FileNotFoundException("favicon.ico not found");
+                }
 
                 var response = context.Response;
                 var outputStream = response.OutputStream;
@@ -86,7 +97,10 @@ namespace HttpListenerServer
             {
                 var request = context.Request;
                 var fileInfo = new FileInfo(ToLocal(request.Url.LocalPath, _folderRoot));
-                if (!fileInfo.Exists) throw new FileNotFoundException($"{fileInfo.FullName} not found.");
+                if (!fileInfo.Exists)
+                {
+                    throw new FileNotFoundException($"{fileInfo.FullName} not found.");
+                }
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -95,24 +109,32 @@ namespace HttpListenerServer
                     var fileLength = fileStream.Length;
 
                     var match = RangeRegex.Match(request.Headers["Range"] ?? string.Empty);
-                    var start = match.Groups["start"].Success ? Math.Max(0, long.Parse(match.Groups["start"].Value)) : 0L;
-                    var finish = match.Groups["end"].Success ? Math.Max(fileLength, long.Parse(match.Groups["end"].Value)) : fileLength;
+                    var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
+                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
 
                     response.KeepAlive = false;
-                    response.Headers.Add("Content-Type", MimeTypeMap.GetMimeType(fileInfo.Extension)); // Ask the system for the filetype.
+                    response.Headers.Add("Content-Type", MimeTypeMap.GetMimeType(fileInfo.Extension));
+                    // Ask the system for the filetype.
                     response.Headers.Add("Content-Disposition", $"inline; filename={fileInfo.Name}");
                     response.Headers.Add("Date", $"{DateTime.Now:R}");
                     response.Headers.Add("Last-Modified", $"{fileInfo.LastWriteTime:R}");
                     response.Headers.Add("Accept-Ranges", "bytes");
                     response.Headers.Add("Content-Range", $"bytes {start}-{finish - 1}/{fileLength}");
                     response.ContentLength64 = finish - start;
-                    response.StatusCode = (start == 0 && finish == fileLength) ? 200 : 206;
-
-                    fileStream.Seek(start, SeekOrigin.Begin);
-                    var buffer = new byte[PacketSize];
-                    for (var i = 0; i < finish - start; i += PacketSize)
+                    if (start < 0 || finish > fileLength)
                     {
-                        outputStream.Write(buffer, 0, (int) Math.Min(finish - start - i, fileStream.Read(buffer, 0, PacketSize)));
+                        response.StatusCode = 416;
+                    }
+                    else
+                    {
+                        response.StatusCode = ( start == 0 && finish == fileLength ) ? 200 : 206;
+
+                        fileStream.Seek(start, SeekOrigin.Begin);
+                        var buffer = new byte[PacketSize];
+                        for (var i = 0; i < finish - start; i += PacketSize)
+                        {
+                            outputStream.Write(buffer, 0, (int) Math.Min(finish - start - i, fileStream.Read(buffer, 0, PacketSize)));
+                        }
                     }
                 }
                 outputStream.Flush();
@@ -137,7 +159,10 @@ namespace HttpListenerServer
                 var url = request.Url.LocalPath;
                 var directoryInfo = new DirectoryInfo(ToLocal(url, _folderRoot));
 
-                if (!directoryInfo.Exists) throw new DirectoryNotFoundException($"{directoryInfo.FullName} not found.");
+                if (!directoryInfo.Exists)
+                {
+                    throw new DirectoryNotFoundException($"{directoryInfo.FullName} not found.");
+                }
 
                 var response = context.Response;
                 var host = request.UserHostName;
@@ -158,18 +183,14 @@ namespace HttpListenerServer
                 var sb = new StringBuilder();
                 foreach (var directory in directoryInfo.EnumerateDirectories().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine(
-                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(directory.FullName, _folderRoot)}/\">/{directory.Name}/</a></td><td class=\"date\">{directory.LastWriteTime:G}</td><td class=\"size\">{directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length)/1024} KB</td><tr>");
+                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(directory.FullName, _folderRoot)}/"">/{directory.Name}/</a></td><td class=""date"">{directory.LastWriteTime:G}</td><td class=""size"">{directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024} KB</td><tr>");
                 }
                 foreach (var file in directoryInfo.EnumerateFiles().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine(
-                        $"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(file.FullName, _folderRoot)}\">/{file.Name}</a></td><td class=\"date\">{file.LastWriteTime:G}</td><td class=\"size\">{file.Length/1024} KB</td></tr>");
+                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(file.FullName, _folderRoot)}"">/{file.Name}</a></td><td class=""date"">{file.LastWriteTime:G}</td><td class=""size"">{file.Length / 1024} KB</td></tr>");
                 }
 
-                var bytes =
-                    Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}",
-                        $"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $"//{host}/", sb));
+                var bytes = Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}", $@"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $@"//{host}/", sb));
 
                 response.ContentLength64 = bytes.LongLength;
                 outputStream.Write(bytes, 0, bytes.Length);

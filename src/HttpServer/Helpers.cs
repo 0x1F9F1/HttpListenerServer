@@ -14,11 +14,11 @@ namespace HttpListenerServer
 
             return local.Length < root.Length
                 ? string.Empty
-                : (!local.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                : ( !local.StartsWith(root, StringComparison.OrdinalIgnoreCase)
                     ? string.Empty
-                    : (local.Equals(root, StringComparison.OrdinalIgnoreCase)
+                    : ( local.Equals(root, StringComparison.OrdinalIgnoreCase)
                         ? string.Empty
-                        : HttpUtility.HtmlEncode(local.Substring(root.Length))));
+                        : HttpUtility.HtmlEncode(local.Substring(root.Length)) ) );
         }
 
         private static string ToLocal(string url, string root)
@@ -32,16 +32,13 @@ namespace HttpListenerServer
             var path = directory.FullName.Trim();
             root = root.Trim();
 
-            if (path.Equals(root, StringComparison.InvariantCultureIgnoreCase)) return path;
+            if (path.Equals(root, StringComparison.InvariantCultureIgnoreCase)) { return path; }
             return directory.Parent?.FullName ?? path;
         }
 
-        private static string Replace(string input, params object[] parameters)
+        private static string Replace(string input, params object[ ] parameters)
         {
-            for (var i = 0; i < parameters.Length; i++)
-            {
-                input = input.Replace($"%{i}%", parameters[i].ToString());
-            }
+            for (var i = 0; i < parameters.Length; i++) { input = input.Replace($"%{i}%", parameters[i].ToString()); }
             return input;
         }
 

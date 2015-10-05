@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -37,8 +38,8 @@ namespace HttpListenerServer
         private readonly bool _fileSize;
         private readonly string _folderRoot;
 
-        private readonly byte[ ] _iconBytes;
-        private readonly byte[ ] _iconCBytes;
+        private readonly byte[] _iconBytes;
+        private readonly byte[] _iconCBytes;
 
         public Handler(string root, bool fileSize)
         {
@@ -56,7 +57,7 @@ namespace HttpListenerServer
         public RequestType GetRequestType(string urlPath)
         {
             var path = ToLocal(urlPath, _folderRoot);
-            if (( Path.GetFileName(path) ?? string.Empty ) == "favicon.ico")
+            if ((Path.GetFileName(path) ?? string.Empty) == "favicon.ico")
             {
                 return RequestType.Icon;
             }
@@ -77,7 +78,7 @@ namespace HttpListenerServer
             {
                 if (!File.Exists("favicon.ico"))
                 {
-                    throw new FileNotFoundException("favicon.ico not found");
+                    throw new FileNotFoundException("favicon");
                 }
 
                 var request = context.Request;
@@ -91,7 +92,7 @@ namespace HttpListenerServer
                 response.Headers.Add("Cache-Control", "public");
                 response.Headers.Add("Expires", "access plus 1 day");
 
-                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                if ((request.Headers["Accept-Encoding"] ?? string.Empty).Contains("gzip"))
                 {
                     response.Headers.Add("Content-Encoding", "gzip");
                     response.ContentLength64 = _iconCBytes.LongLength;
@@ -134,8 +135,8 @@ namespace HttpListenerServer
                     var fileLength = fileStream.Length;
 
                     var match = RangeRegex.Match(request.Headers["Range"] ?? string.Empty);
-                    var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
-                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) + 1 : fileLength;
+                    var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value, NumberStyles.Integer) : 0L;
+                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value, NumberStyles.Integer) + 1 : fileLength;
 
                     response.KeepAlive = false;
                     response.Headers.Add("Content-Type", MimeTypeMap.GetMimeType(fileInfo.Extension));
@@ -148,7 +149,7 @@ namespace HttpListenerServer
                     response.ContentLength64 = finish - start;
                     if (start >= 0 && finish <= fileLength)
                     {
-                        response.StatusCode = ( start == 0 && finish == fileLength ) ? 200 : 206;
+                        response.StatusCode = (start == 0 && finish == fileLength) ? 200 : 206;
 
                         fileStream.Seek(start, SeekOrigin.Begin);
                         var buffer = new byte[PacketSize];
@@ -208,16 +209,16 @@ namespace HttpListenerServer
                 var sb = new StringBuilder();
                 foreach (var directory in directoryInfo.EnumerateDirectories().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(directory.FullName, _folderRoot)}/"">/{directory.Name}/</a></td><td class=""date"">{directory.LastWriteTime:G}</td><td class=""size"">{( _fileSize ? ( directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024 ) : 0 )} KB</td><tr>");
+                    sb.AppendLine($"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(directory.FullName, _folderRoot)}/\">/{directory.Name}/</a></td><td class=\"date\">{directory.LastWriteTime:G}</td><td class=\"size\">{(_fileSize ? (directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024) : 0)} KB</td><tr>");
                 }
                 foreach (var file in directoryInfo.EnumerateFiles().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(file.FullName, _folderRoot)}"">/{file.Name}</a></td><td class=""date"">{file.LastWriteTime:G}</td><td class=""size"">{file.Length / 1024} KB</td></tr>");
+                    sb.AppendLine($"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(file.FullName, _folderRoot)}\">/{file.Name}</a></td><td class=\"date\">{file.LastWriteTime:G}</td><td class=\"size\">{file.Length / 1024} KB</td></tr>");
                 }
 
                 var bytes = Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}", $@"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $@"//{host}/", sb));
 
-                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                if ((request.Headers["Accept-Encoding"] ?? string.Empty).Contains("gzip"))
                 {
                     response.Headers.Add("Content-Encoding", "gzip");
                     bytes = Compress(bytes);
@@ -257,12 +258,11 @@ namespace HttpListenerServer
 
                 var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, context.Request.Url.LocalPath));
 
-                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                if ((request.Headers["Accept-Encoding"] ?? string.Empty).Contains("gzip"))
                 {
                     response.Headers.Add("Content-Encoding", "gzip");
                     bytes = Compress(bytes);
                 }
-
                 response.ContentLength64 = bytes.LongLength;
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();

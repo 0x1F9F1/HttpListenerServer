@@ -13,7 +13,7 @@ namespace HttpListenerServer
             local = local.Trim();
             root = root.Trim();
 
-            return local.Length < root.Length ? string.Empty : ( !local.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : ( local.Equals(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : HttpUtility.HtmlEncode(local.Substring(root.Length)) ) );
+            return local.Length < root.Length ? string.Empty : (!local.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : (local.Equals(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : HttpUtility.HtmlEncode(local.Substring(root.Length))));
         }
 
         private static string ToLocal(string url, string root)
@@ -34,7 +34,7 @@ namespace HttpListenerServer
             return directory.Parent?.FullName ?? path;
         }
 
-        private static string Replace(string input, params object[ ] parameters)
+        private static string Replace(string input, params object[] parameters)
         {
             for (var i = 0; i < parameters.Length; i++)
             {
@@ -49,16 +49,14 @@ namespace HttpListenerServer
             Console.WriteLine($"{DateTime.Now:R} | [Handler] {data}");
         }
 
-        private static byte[ ] Compress(byte[ ] raw)
+        private static byte[] Compress(byte[] raw)
         {
-            using (var memory = new MemoryStream())
+            var memoryStream = new MemoryStream();
+            using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress, true))
             {
-                using (var gZipStream = new GZipStream(memory, CompressionMode.Compress, true))
-                {
-                    gZipStream.Write(raw, 0, raw.Length);
-                }
-                return memory.ToArray();
+                gZipStream.Write(raw, 0, raw.Length);
             }
+            return memoryStream.ToArray();
         }
     }
 }

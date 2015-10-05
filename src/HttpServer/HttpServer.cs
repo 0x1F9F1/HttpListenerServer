@@ -18,9 +18,14 @@ namespace HttpListenerServer
         private bool _disposed;
         private Thread _listenerThread;
 
-        public HttpServer(string rootFolder = @"Files\", bool relative = true, bool fileSize = true)
+        public HttpServer(string rootFolder = @"Files\", bool relative = true, bool https = false, bool fileSize = true)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
+
+            if (rootFolder == null)
+            {
+                throw new FileNotFoundException("Root Folder is null");
+            }
 
             if (!rootFolder.EndsWith(@"\"))
             {
@@ -31,6 +36,10 @@ namespace HttpListenerServer
 
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(@"http://*:80/");
+            if (https)
+            {
+                _httpListener.Prefixes.Add(@"https://*:80/");
+            }
         }
 
         public void Dispose()
@@ -84,7 +93,7 @@ namespace HttpListenerServer
                     _requestHandler.HandleOther(context);
                     break;
                 default:
-                    throw new Exception("Invalid request type.");
+                    throw new InvalidDataException("Invalid request type.");
             }
         }
 

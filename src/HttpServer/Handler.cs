@@ -158,7 +158,6 @@ namespace HttpListenerServer
             }
             catch (Exception e)
             {
-                throw;
                 Log($"[Error] {e.Message}");
                 context.Response.Abort();
             }

@@ -18,19 +18,31 @@ namespace HttpListenerServer
             Other
         }
 
+        //public enum FileSize
+        //{
+        //    Byte = 1024^0,
+        //    Kilobyte = 1024^1,
+        //    Megabyte = 1024^2,
+        //    Gigabyte = 1024^3,
+        //    Terabyte = 1024^4,
+        //}
+
         private const int PacketSize = 4096;
 
         private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled);
 
         private readonly string _directoryTemplate;
         private readonly string _errorTemplate;
+
+        private readonly bool _fileSize;
         private readonly string _folderRoot;
 
         private readonly byte[ ] _iconBytes;
 
-        public Handler(string root)
+        public Handler(string root, bool fileSize)
         {
             _folderRoot = root;
+            _fileSize = fileSize;
             _iconBytes = File.ReadAllBytes("favicon.ico");
             Log("Loaded favicon.ico");
             _directoryTemplate = File.ReadAllText("Directory.html");
@@ -104,13 +116,13 @@ namespace HttpListenerServer
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
-                using (var fileStream = fileInfo.OpenRead())
+                using (var fileStream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
                     var fileLength = fileStream.Length;
 
                     var match = RangeRegex.Match(request.Headers["Range"] ?? string.Empty);
                     var start = match.Groups["start"].Success ? long.Parse(match.Groups["start"].Value) : 0L;
-                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) : fileLength;
+                    var finish = match.Groups["end"].Success ? long.Parse(match.Groups["end"].Value) + 1 : fileLength;
 
                     response.KeepAlive = false;
                     response.Headers.Add("Content-Type", MimeTypeMap.GetMimeType(fileInfo.Extension));
@@ -121,11 +133,7 @@ namespace HttpListenerServer
                     response.Headers.Add("Accept-Ranges", "bytes");
                     response.Headers.Add("Content-Range", $"bytes {start}-{finish - 1}/{fileLength}");
                     response.ContentLength64 = finish - start;
-                    if (start < 0 || finish > fileLength)
-                    {
-                        response.StatusCode = 416;
-                    }
-                    else
+                    if (start >= 0 && finish <= fileLength)
                     {
                         response.StatusCode = ( start == 0 && finish == fileLength ) ? 200 : 206;
 
@@ -135,6 +143,10 @@ namespace HttpListenerServer
                         {
                             outputStream.Write(buffer, 0, (int) Math.Min(finish - start - i, fileStream.Read(buffer, 0, PacketSize)));
                         }
+                    }
+                    else
+                    {
+                        response.StatusCode = 416;
                     }
                 }
                 outputStream.Flush();
@@ -146,6 +158,7 @@ namespace HttpListenerServer
             }
             catch (Exception e)
             {
+                throw;
                 Log($"[Error] {e.Message}");
                 context.Response.Abort();
             }
@@ -175,15 +188,15 @@ namespace HttpListenerServer
                 response.Headers.Add("Content-Disposition", $"inline; filename={directoryInfo.Name}.html");
                 response.Headers.Add("Date", $"{DateTime.Now:R}");
                 response.Headers.Add("Last-Modified", $"{directoryInfo.LastWriteTime:R}");
-                response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
-                response.Headers.Add("Pragma", "no-cache");
-                response.Headers.Add("Expires", "0");
+                //response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate"); // Uncomment for no caching.
+                //response.Headers.Add("Pragma", "no-cache"); // Uncomment for no caching.
+                //response.Headers.Add("Expires", "0"); // Uncomment for no caching.
                 response.StatusCode = 200;
 
                 var sb = new StringBuilder();
                 foreach (var directory in directoryInfo.EnumerateDirectories().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(directory.FullName, _folderRoot)}/"">/{directory.Name}/</a></td><td class=""date"">{directory.LastWriteTime:G}</td><td class=""size"">{directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024} KB</td><tr>");
+                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(directory.FullName, _folderRoot)}/"">/{directory.Name}/</a></td><td class=""date"">{directory.LastWriteTime:G}</td><td class=""size"">{( _fileSize ? ( directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024 ) : 0 )} KB</td><tr>");
                 }
                 foreach (var file in directoryInfo.EnumerateFiles().OrderBy(s => s.Name))
                 {

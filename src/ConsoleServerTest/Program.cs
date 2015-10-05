@@ -12,7 +12,7 @@ namespace ConsoleServerTest
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.Clear();
 
-            var httpServer = new HttpServer(@"D:\ServerFiles\", false);
+            var httpServer = new HttpServer(@"D:\ServerFiles\", false, false);
             httpServer.Start();
             Console.ReadKey();
             httpServer.Stop();

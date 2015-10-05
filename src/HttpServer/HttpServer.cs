@@ -18,14 +18,16 @@ namespace HttpListenerServer
         private bool _disposed;
         private Thread _listenerThread;
 
-        public HttpServer(string rootFolder = @"Files\", bool relative = true)
+        public HttpServer(string rootFolder = @"Files\", bool relative = true, bool fileSize = true)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
 
-            if (!rootFolder.EndsWith(@"\")) { rootFolder += @"\"; }
+            if (!rootFolder.EndsWith(@"\"))
+            {
+                rootFolder += @"\";
+            }
             _listenerThread = new Thread(ListenerThread);
-            _requestHandler =
-                new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder);
+            _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder, fileSize);
 
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(@"http://*:80/");
@@ -37,7 +39,10 @@ namespace HttpListenerServer
             GC.SuppressFinalize(this);
         }
 
-        ~HttpServer() { Dispose(false); }
+        ~HttpServer()
+        {
+            Dispose(false);
+        }
 
         private void ListenerThread()
         {
@@ -51,7 +56,8 @@ namespace HttpListenerServer
                         ThreadPool.QueueUserWorkItem(HandleRequest, context);
                     }
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     Log($"[Error] {e.Message}");
                 }
             }
@@ -93,11 +99,18 @@ namespace HttpListenerServer
             try
             {
                 Log("Starting Server");
-                if (!_httpListener.IsListening) { _httpListener.Start(); }
-                if (!_listenerThread.IsAlive) { _listenerThread = new Thread(ListenerThread); }
+                if (!_httpListener.IsListening)
+                {
+                    _httpListener.Start();
+                }
+                if (!_listenerThread.IsAlive)
+                {
+                    _listenerThread = new Thread(ListenerThread);
+                }
                 _listenerThread.Start();
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Log($"[Error] {e.Message}");
             }
         }
@@ -107,9 +120,13 @@ namespace HttpListenerServer
             try
             {
                 Log("Stopping Server");
-                if (_httpListener.IsListening) { _httpListener.Stop(); }
+                if (_httpListener.IsListening)
+                {
+                    _httpListener.Stop();
+                }
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Log($"[Error] {e.Message}");
             }
         }
@@ -121,14 +138,18 @@ namespace HttpListenerServer
                 _httpListener.Abort();
                 _listenerThread.Abort();
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Log($"[Error] {e.Message}");
             }
         }
 
         private void Dispose(bool disposing)
         {
-            if (_disposed) { return; }
+            if (_disposed)
+            {
+                return;
+            }
 
             if (disposing)
             {
@@ -143,14 +164,12 @@ namespace HttpListenerServer
         {
             var assemblyName = new AssemblyName(args.Name);
 
-            using (
-                var stream =
-                    Assembly.GetExecutingAssembly()
-                        .GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture)
-                            ? assemblyName.Name + ".dll"
-                            : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) ? assemblyName.Name + ".dll" : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
-                if (stream == null) { return null; }
+                if (stream == null)
+                {
+                    return null;
+                }
 
                 var assemblyRawBytes = new byte[stream.Length];
                 stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);

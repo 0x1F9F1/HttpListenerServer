@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Web;
 
 namespace HttpListenerServer
@@ -46,6 +47,18 @@ namespace HttpListenerServer
         {
             Debug.WriteLine($"{DateTime.Now:R} | [Handler] {data}");
             Console.WriteLine($"{DateTime.Now:R} | [Handler] {data}");
+        }
+
+        private static byte[ ] Compress(byte[ ] raw)
+        {
+            using (var memory = new MemoryStream())
+            {
+                using (var gZipStream = new GZipStream(memory, CompressionMode.Compress, true))
+                {
+                    gZipStream.Write(raw, 0, raw.Length);
+                }
+                return memory.ToArray();
+            }
         }
     }
 }

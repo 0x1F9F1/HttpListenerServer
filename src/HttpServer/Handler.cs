@@ -38,12 +38,14 @@ namespace HttpListenerServer
         private readonly string _folderRoot;
 
         private readonly byte[ ] _iconBytes;
+        private readonly byte[ ] _iconCBytes;
 
         public Handler(string root, bool fileSize)
         {
             _folderRoot = root;
             _fileSize = fileSize;
             _iconBytes = File.ReadAllBytes("favicon.ico");
+            _iconCBytes = Compress(_iconBytes);
             Log("Loaded favicon.ico");
             _directoryTemplate = File.ReadAllText("Directory.html");
             Log("Loaded Directory.html");
@@ -78,6 +80,7 @@ namespace HttpListenerServer
                     throw new FileNotFoundException("favicon.ico not found");
                 }
 
+                var request = context.Request;
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -87,8 +90,18 @@ namespace HttpListenerServer
                 response.Headers.Add("Date", $"{DateTime.Now:R}");
                 response.Headers.Add("Cache-Control", "public");
                 response.Headers.Add("Expires", "access plus 1 day");
-                response.ContentLength64 = _iconBytes.LongLength;
-                outputStream.Write(_iconBytes, 0, _iconBytes.Length);
+
+                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                {
+                    response.Headers.Add("Content-Encoding", "gzip");
+                    response.ContentLength64 = _iconCBytes.LongLength;
+                    outputStream.Write(_iconCBytes, 0, _iconCBytes.Length);
+                }
+                else
+                {
+                    response.ContentLength64 = _iconBytes.LongLength;
+                    outputStream.Write(_iconBytes, 0, _iconBytes.Length);
+                }
                 outputStream.Flush();
                 response.Close();
             }
@@ -204,6 +217,12 @@ namespace HttpListenerServer
 
                 var bytes = Encoding.UTF8.GetBytes(Replace(_directoryTemplate, directoryInfo.Name, $"Directory of {url}", $@"//{host}/{ToUrl(GetParent(directoryInfo, _folderRoot), _folderRoot)}", $@"//{host}/", sb));
 
+                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                {
+                    response.Headers.Add("Content-Encoding", "gzip");
+                    bytes = Compress(bytes);
+                }
+
                 response.ContentLength64 = bytes.LongLength;
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
@@ -224,6 +243,7 @@ namespace HttpListenerServer
         {
             try
             {
+                var request = context.Request;
                 var response = context.Response;
                 var outputStream = response.OutputStream;
 
@@ -237,8 +257,13 @@ namespace HttpListenerServer
 
                 var bytes = Encoding.UTF8.GetBytes(Replace(_errorTemplate, context.Request.Url.LocalPath));
 
-                response.ContentLength64 = bytes.LongLength;
+                if (( request.Headers["Accept-Encoding"] ?? string.Empty ).Contains("gzip"))
+                {
+                    response.Headers.Add("Content-Encoding", "gzip");
+                    bytes = Compress(bytes);
+                }
 
+                response.ContentLength64 = bytes.LongLength;
                 outputStream.Write(bytes, 0, bytes.Length);
                 outputStream.Flush();
                 response.Close();

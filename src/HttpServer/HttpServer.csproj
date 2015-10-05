@@ -48,7 +48,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Handler.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="HttpServer.cs" />

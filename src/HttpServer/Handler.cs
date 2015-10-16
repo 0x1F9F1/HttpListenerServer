@@ -1,16 +1,21 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using MimeTypes;
 
 namespace HttpListenerServer
 {
-    partial class Handler
+    public class Handler
     {
+        #region RequestType enum
+
         public enum RequestType
         {
             Icon,
@@ -18,6 +23,8 @@ namespace HttpListenerServer
             Folder,
             Other
         }
+
+        #endregion
 
         //public enum FileSize
         //{
@@ -29,24 +36,19 @@ namespace HttpListenerServer
         //}
 
         private const int PacketSize = 4096;
-
-        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled);
-
+        private readonly byte[] _compressedIconBytes;
         private readonly string _directoryTemplate;
         private readonly string _errorTemplate;
-
-        private readonly bool _fileSize;
         private readonly string _folderRoot;
-
         private readonly byte[] _iconBytes;
-        private readonly byte[] _iconCBytes;
+        private readonly bool _showFolderSize;
 
-        public Handler(string root, bool fileSize)
+        public Handler(string root, bool showFolderSize)
         {
             _folderRoot = root;
-            _fileSize = fileSize;
+            _showFolderSize = showFolderSize;
             _iconBytes = File.ReadAllBytes("favicon.ico");
-            _iconCBytes = Compress(_iconBytes);
+            _compressedIconBytes = Compress(_iconBytes);
             Log("Loaded favicon.ico");
             _directoryTemplate = File.ReadAllText("Directory.html");
             Log("Loaded Directory.html");
@@ -95,8 +97,8 @@ namespace HttpListenerServer
                 if ((request.Headers["Accept-Encoding"] ?? string.Empty).Contains("gzip"))
                 {
                     response.Headers.Add("Content-Encoding", "gzip");
-                    response.ContentLength64 = _iconCBytes.LongLength;
-                    outputStream.Write(_iconCBytes, 0, _iconCBytes.Length);
+                    response.ContentLength64 = _compressedIconBytes.LongLength;
+                    outputStream.Write(_compressedIconBytes, 0, _compressedIconBytes.Length);
                 }
                 else
                 {
@@ -209,7 +211,7 @@ namespace HttpListenerServer
                 var sb = new StringBuilder();
                 foreach (var directory in directoryInfo.EnumerateDirectories().OrderBy(s => s.Name))
                 {
-                    sb.AppendLine($"<tr><td class=\"name\"><a href=\"//{host}/{ToUrl(directory.FullName, _folderRoot)}/\">/{directory.Name}/</a></td><td class=\"date\">{directory.LastWriteTime:G}</td><td class=\"size\">{(_fileSize ? (directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024) : 0)} KB</td><tr>");
+                    sb.AppendLine($@"<tr><td class=""name""><a href=""//{host}/{ToUrl(directory.FullName, _folderRoot)}/"">/{directory.Name}/</a></td><td class=""date"">{directory.LastWriteTime:G}</td><td class=""size"">{(_showFolderSize ? (directory.EnumerateFiles("*", SearchOption.AllDirectories).Sum(s => s.Length) / 1024) : 0)} KB</td><tr>");
                 }
                 foreach (var file in directoryInfo.EnumerateFiles().OrderBy(s => s.Name))
                 {
@@ -278,5 +280,62 @@ namespace HttpListenerServer
                 context.Response.Abort();
             }
         }
+
+        #region Statics
+
+        private static readonly Regex RangeRegex = new Regex(@"bytes=?(?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled);
+
+        private static string ToUrl(string local, string root)
+        {
+            local = local.Trim();
+            root = root.Trim();
+
+            return local.Length < root.Length ? string.Empty : (!local.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : (local.Equals(root, StringComparison.OrdinalIgnoreCase) ? string.Empty : HttpUtility.HtmlEncode(local.Substring(root.Length))));
+        }
+
+        private static string ToLocal(string url, string root)
+        {
+            url = HttpUtility.HtmlDecode(url).Trim().TrimStart('/', '\\').Replace('/', '\\');
+            return Path.Combine(root, url);
+        }
+
+        private static string GetParent(DirectoryInfo directory, string root)
+        {
+            var path = directory.FullName.Trim();
+            root = root.Trim();
+
+            if (path.Equals(root, StringComparison.OrdinalIgnoreCase))
+            {
+                return path;
+            }
+            return directory.Parent?.FullName ?? path;
+        }
+
+        private static string Replace(string input, params object[] parameters)
+        {
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                input = input.Replace($"%{i}%", parameters[i].ToString());
+            }
+            return input;
+        }
+
+        private static void Log(object data)
+        {
+            Debug.WriteLine($"{DateTime.Now:R} | [Handler] {data}");
+            Console.WriteLine($"{DateTime.Now:R} | [Handler] {data}");
+        }
+
+        private static byte[] Compress(byte[] raw)
+        {
+            var memoryStream = new MemoryStream();
+            using (var gZipStream = new GZipStream(memoryStream, CompressionMode.Compress, true))
+            {
+                gZipStream.Write(raw, 0, raw.Length);
+            }
+            return memoryStream.ToArray();
+        }
+
+        #endregion
     }
 }

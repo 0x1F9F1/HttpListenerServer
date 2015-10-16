@@ -18,7 +18,7 @@ namespace HttpListenerServer
         private bool _disposed;
         private Thread _listenerThread;
 
-        public HttpServer(string rootFolder = @"Files\", bool relative = true, bool https = false, bool fileSize = true)
+        public HttpServer(string rootFolder = @"Files\", bool relative = false, bool https = false, bool showFolderSize = true)
         {
             AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
 
@@ -32,7 +32,7 @@ namespace HttpListenerServer
                 rootFolder += @"\";
             }
             _listenerThread = new Thread(ListenerThread);
-            _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder, fileSize);
+            _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder, showFolderSize);
 
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(@"http://*:80/");

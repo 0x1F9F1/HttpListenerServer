@@ -6,7 +6,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
@@ -286,6 +285,8 @@ namespace HttpListenerServer
 
         #endregion
 
+        #region Helpers
+
         #region Statics
 
         private static readonly Regex RangeRegex = new Regex(@"bytes[= ](?<start>\d+)?-(?<end>\d+)?", RegexOptions.Compiled); //Regex for the request's Range header.
@@ -342,20 +343,6 @@ namespace HttpListenerServer
             return memoryStream.ToArray(); //Return the memoryStream as an arraw of bytes.
         }
 
-        private static Stream GetResourceStream(string name)
-        {
-            return Assembly.GetExecutingAssembly().GetManifestResourceStream(GetResourceNames.OrderBy(s => s.Length).First(s => s.EndsWith(name))); //Return shortest resource name which ends with the input name.
-            
-        }
-
-        private static IEnumerable<string> GetResourceNames
-        {
-            get
-            {
-                return Assembly.GetExecutingAssembly().GetManifestResourceNames(); //Return a list of embeded resources.
-            }
-        }
-
         private static byte[] ReadAllBytes(Stream stream)
         {
             var bytes = new byte[stream.Length];
@@ -363,7 +350,15 @@ namespace HttpListenerServer
             return bytes;
         }
 
-        private static void CreateFileFromResource(string name)
+        #endregion
+
+        private Stream GetResourceStream(string name)
+        {
+            var current = GetType();
+            return current.Assembly.GetManifestResourceStream($"{current.Namespace}.{name}");
+        }
+
+        private void CreateFileFromResource(string name)
         {
             if (!File.Exists(name))
             {

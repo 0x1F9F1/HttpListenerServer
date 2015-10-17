@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -15,6 +14,19 @@ namespace HttpListenerServer
 {
     public class Handler
     {
+        #region FileSize enum
+
+        public enum FileSize
+        {
+            Byte = 1024 ^ 0,
+            Kilobyte = 1024 ^ 1,
+            Megabyte = 1024 ^ 2,
+            Gigabyte = 1024 ^ 3,
+            Terabyte = 1024 ^ 4
+        }
+
+        #endregion
+
         #region RequestType enum
 
         public enum RequestType
@@ -26,15 +38,6 @@ namespace HttpListenerServer
         }
 
         #endregion
-
-        //public enum FileSize
-        //{
-        //    Byte = 1024^0,
-        //    Kilobyte = 1024^1,
-        //    Megabyte = 1024^2,
-        //    Gigabyte = 1024^3,
-        //    Terabyte = 1024^4,
-        //}
 
         private const int BufferSize = 4096;
         private readonly byte[] _compressedIconBytes;
@@ -63,25 +66,6 @@ namespace HttpListenerServer
 
             _errorTemplate = File.ReadAllText("Error.html"); //Load the error templace into memory.
             Log("Loaded Error.html");
-        }
-
-        public RequestType GetRequestType(string urlPath)
-        {
-            var path = ToLocal(urlPath, _folderRoot); //Turn the url into a local file path.
-
-            if (Path.GetFileName(path)?.Equals("favicon.ico") ?? false) //If the path's file name equals favicon.ico, return RequestType.Icon.
-            {
-                return RequestType.Icon;
-            }
-            if (File.Exists(path)) //Else if the selected file exists, return RequestType.File.
-            {
-                return RequestType.File;
-            }
-            if (Directory.Exists(path)) // Else if the selected directory exists, return RequestType.Directory
-            {
-                return RequestType.Directory;
-            }
-            return RequestType.Other; // If all else fails, just return RequestType.Other (Error)
         }
 
         #region Handlers
@@ -351,6 +335,25 @@ namespace HttpListenerServer
         }
 
         #endregion
+
+        public RequestType GetRequestType(string urlPath)
+        {
+            var path = ToLocal(urlPath, _folderRoot); //Turn the url into a local file path.
+
+            if (Path.GetFileName(path)?.Equals("favicon.ico") ?? false) //If the path's file name equals favicon.ico, return RequestType.Icon.
+            {
+                return RequestType.Icon;
+            }
+            if (File.Exists(path)) //Else if the selected file exists, return RequestType.File.
+            {
+                return RequestType.File;
+            }
+            if (Directory.Exists(path)) // Else if the selected directory exists, return RequestType.Directory
+            {
+                return RequestType.Directory;
+            }
+            return RequestType.Other; // If all else fails, just return RequestType.Other (Error)
+        }
 
         private Stream GetResourceStream(string name)
         {

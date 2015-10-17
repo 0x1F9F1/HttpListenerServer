@@ -43,17 +43,6 @@ namespace HttpListenerServer
             }
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        ~HttpServer()
-        {
-            Dispose(false);
-        }
-
         private void ListenerThread()
         {
             while (_httpListener.IsListening)
@@ -77,9 +66,8 @@ namespace HttpListenerServer
         {
             var context = (HttpListenerContext) state;
             var localPath = context.Request.Url.LocalPath;
-            Log($"[Request] {context.Request.Url.LocalPath}");
-            var requestType = _requestHandler.GetRequestType(localPath);
-            switch (requestType)
+            Log($"[Request] {localPath}");
+            switch (_requestHandler.GetRequestType(localPath)) //Get the request type, then act on it (use switch instead of directly handling to allow additional handling)
             {
                 case Handler.RequestType.Icon:
                     _requestHandler.HandleIcon(context);
@@ -154,37 +142,46 @@ namespace HttpListenerServer
             }
         }
 
-        private void Dispose(bool disposing)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            if (disposing)
-            {
-                _httpListener.Close();
-                _handle.Dispose();
-            }
-
-            _disposed = true;
-        }
-
         private static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
         {
             var assemblyName = new AssemblyName(args.Name);
 
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) ? assemblyName.Name + ".dll" : $@"{assemblyName.CultureInfo}\{assemblyName.Name}.dll"))
             {
-                if (stream == null)
+                if (stream != null)
                 {
-                    return null;
+                    var assemblyRawBytes = new byte[stream.Length];
+                    stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
+                    return Assembly.Load(assemblyRawBytes);
                 }
-
-                var assemblyRawBytes = new byte[stream.Length];
-                stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
-                return Assembly.Load(assemblyRawBytes);
+                return null;
             }
         }
+
+        #region Disposing
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~HttpServer() { Dispose(false); }
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _httpListener.Close();
+                    _listenerThread.Abort();
+                    _handle.Dispose();
+                }
+                _disposed = true;
+            }
+        }
+
+        #endregion
     }
 }

@@ -31,6 +31,7 @@ namespace HttpListenerServer
             {
                 rootFolder += @"\";
             }
+
             _listenerThread = new Thread(ListenerThread);
             _requestHandler = new Handler(relative ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rootFolder) : rootFolder, showFolderSize);
 
@@ -86,7 +87,7 @@ namespace HttpListenerServer
                 case Handler.RequestType.File:
                     _requestHandler.HandleFile(context);
                     break;
-                case Handler.RequestType.Folder:
+                case Handler.RequestType.Directory:
                     _requestHandler.HandleDirectory(context);
                     break;
                 case Handler.RequestType.Other:
